@@ -1,10 +1,8 @@
 'use client';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useWriteContract, useWaitForTransactionReceipt, useWatchContractEvent, useReadContract } from 'wagmi';
-import { parseEther, Hex, hexToBytes } from 'viem';
+import { Hex, hexToBytes } from 'viem';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -12,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Database, Search, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide-react';
 
   const MOCK_AI_AGENT_CONTRACT_ADDRESS = "0xE398011BfD41E94e4BF40E1Df64e0960F1E37A2C"; // From your deployed contracts
-  const ORACLE_CONTRACT_ADDRESS = "0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9f6"; // SomniaOracle address
+
   const MOCK_AI_AGENT_ABI = [
   {
     "inputs": [
@@ -145,7 +143,7 @@ import { Database, Search, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide
   }
 ] as const;
 
-const SOMNIA_ORACLE_CONTRACT_ADDRESS = "0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9f6"; // From your deployed contracts
+
 
 export default function Home() {
   const [dataSourceIdentifier, setDataSourceIdentifier] = useState("weather");
