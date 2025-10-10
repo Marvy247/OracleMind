@@ -1,0 +1,11 @@
+[profile.default]
+src = "src"
+out = "out"
+excluded_paths = ["lib/openzeppelin-contracts/test", "lib/openzeppelin-contracts/certora", "lib/aave-v3-core/certora"]
+remappings = [
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
+]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

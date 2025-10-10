@@ -1,0 +1,2 @@
+SomniaOracle Contract Address= 0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9f6
+MockAIAgent Contract Address= 0xE398011BfD41E94e4BF40E1Df64e0960F1E37A2C
