@@ -164,6 +164,20 @@ async function fetchData(dataSourceIdentifier: string, params: string): Promise<
             } else {
                 console.warn(`Could not parse weather data for ${city}.`);
             }
+        } else if (dataSourceIdentifier === 'price') {
+            const coinId = params;
+            const priceApiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`;
+            const response = await axios.get(priceApiUrl);
+
+            if (response.data && response.data[coinId]) {
+                const price = response.data[coinId].usd;
+                data = JSON.stringify({ price });
+                // Basic validation: price should be positive
+                validationStatus = price > 0;
+                console.log(`Fetched price for ${coinId}: $${price}. Valid: ${validationStatus}`);
+            } else {
+                console.warn(`Could not parse price data for ${coinId}.`);
+            }
         } else {
             console.warn(`Unsupported data source identifier: ${dataSourceIdentifier}`);
             data = JSON.stringify({ error: "Unsupported data source" });

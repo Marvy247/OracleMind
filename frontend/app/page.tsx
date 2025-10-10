@@ -151,11 +151,17 @@ export default function Home() {
   const [dataSourceIdentifier, setDataSourceIdentifier] = useState("weather");
   const [params, setParams] = useState("London");
 
+  const dataSources = ["weather", "price"];
+
   const cities = [
     "London", "New York", "Tokyo", "Paris", "Sydney", "Berlin", "Moscow", "Beijing", "Mumbai", "Cairo",
     "Rio de Janeiro", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego",
     "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte", "San Francisco",
     "Indianapolis", "Seattle", "Denver", "Boston"
+  ];
+
+  const coins = [
+    "bitcoin", "ethereum", "solana", "cardano", "polygon", "chainlink", "avalanche-2", "polkadot", "dogecoin", "shiba-inu"
   ];
   const [currentRequestId, setCurrentRequestId] = useState<Hex | undefined>(undefined);
   const [receivedData, setReceivedData] = useState<string | undefined>(undefined);
@@ -295,29 +301,52 @@ export default function Home() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="dataSourceIdentifier">Data Source Identifier</Label>
-                <Input
-                  id="dataSourceIdentifier"
-                  type="text"
-                  value={dataSourceIdentifier}
-                  onChange={(e) => setDataSourceIdentifier(e.target.value)}
-                  placeholder="e.g., weather"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="params">City</Label>
-                <Select value={params} onValueChange={setParams}>
+                <Label htmlFor="dataSourceIdentifier">Data Source</Label>
+                <Select value={dataSourceIdentifier} onValueChange={(value) => {
+                  setDataSourceIdentifier(value);
+                  setParams(value === "weather" ? "London" : "bitcoin");
+                }}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a city" />
+                    <SelectValue placeholder="Select data source" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city} value={city}>
-                        {city}
+                    {dataSources.map(source => (
+                      <SelectItem key={source} value={source}>
+                        {source === "weather" ? "Weather" : "Crypto Price"}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="params">{dataSourceIdentifier === "weather" ? "City" : "Cryptocurrency"}</Label>
+                {dataSourceIdentifier === "weather" ? (
+                  <Select value={params} onValueChange={setParams}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map(city => (
+                        <SelectItem key={city} value={city}>
+                          {city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select value={params} onValueChange={setParams}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a cryptocurrency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {coins.map(coin => (
+                        <SelectItem key={coin} value={coin}>
+                          {coin.charAt(0).toUpperCase() + coin.slice(1).replace('-', ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <Button
                 onClick={handleRequestData}
@@ -397,7 +426,7 @@ export default function Home() {
                   </span>
                 </p>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Note: Temperature data is in Celsius.
+                  Note: {dataSourceIdentifier === "weather" ? "Temperature data is in Celsius." : "Price data is in USD."}
                 </p>
               </CardContent>
             </Card>
