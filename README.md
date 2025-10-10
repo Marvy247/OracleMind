@@ -1,4 +1,4 @@
-# Somnia AI Agent Data Oracle & Validation Layer
+# OracleMind - AI Data Oracle & Validation Layer
 
 This project is an entry for the Somnia AI Hackathon, focusing on the Infra Track. It aims to build a crucial piece of infrastructure for the Somnia ecosystem: a robust and verifiable data oracle specifically designed for on-chain autonomous AI agents.
 
@@ -22,7 +22,7 @@ Autonomous AI agents operating on the Somnia blockchain require access to reliab
 ## Deployed Contract Addresses (Somnia Testnet)
 
 *   **SomniaOracle Contract Address:** `0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9f6`
-*   **MockAIAgent Contract Address:** `0x4CCbFFc188a51fe7E983D64252389E31C1AC9a74`
+*   **MockAIAgent Contract Address:** `0xE398011BfD41E94e4BF40E1Df64e0960F1E37A2C`
 
 ## Setup and Installation
 

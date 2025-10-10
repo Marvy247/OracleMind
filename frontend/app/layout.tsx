@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Somnia AI Agent Data Oracle",
-  description: "A robust and verifiable data oracle for on-chain autonomous AI agents on Somnia blockchain.",
+  title: "OracleMind - Decentralized AI Data Oracle",
+  description: "Secure and verifiable data oracle for on-chain AI agents",
 };
 
 export default function RootLayout({

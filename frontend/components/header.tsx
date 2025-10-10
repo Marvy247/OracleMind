@@ -6,7 +6,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
-            Somnia AI Agent Data Oracle
+            OracleMind
           </h1>
         </div>
         <nav className="hidden md:flex space-x-6">

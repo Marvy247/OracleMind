@@ -151,7 +151,7 @@ export default function Home() {
   const [dataSourceIdentifier, setDataSourceIdentifier] = useState("weather");
   const [params, setParams] = useState("London");
 
-  const dataSources = ["weather", "price", "exchange"];
+  const dataSources = ["price", "exchange", "weather"];
 
   const cities = [
     "London", "New York", "Tokyo", "Paris", "Sydney", "Berlin", "Moscow", "Beijing", "Mumbai", "Cairo",
@@ -282,7 +282,7 @@ export default function Home() {
         <div className="container mx-auto max-w-4xl">
           <Zap className="h-16 w-16 mx-auto mb-4 text-blue-600 dark:text-blue-400 animate-pulse" />
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
-            Somnia AI Agent Data Oracle
+            OracleMind
           </h1>
           <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">
             Request real-world data securely for your on-chain AI agents. Decentralized, verifiable, and reliable.
@@ -318,7 +318,7 @@ export default function Home() {
                     {dataSources.map(source => (
                       <SelectItem key={source} value={source}>
                         {source === "weather" ? "Weather" :
-                         source === "price" ? "Crypto Price" :
+                         source === "price" ? "Crypto Price Feed" :
                          source === "exchange" ? "Currency Exchange" :
                          source === "joke" ? "Random Joke" :
                          "Random Fact"}
