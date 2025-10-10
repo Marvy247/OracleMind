@@ -1,8 +1,5 @@
 # 🔮 OracleMind - AI Data Oracle & Validation Layer for Somnia
 
-[![Track](https://img.shields.io/badge/Hackathon%20Track-Infra%20Agents-blueviolet)](https://dorahacks.io/hackathon/somnia-ai-hackathon/detail)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-
 **OracleMind is a foundational infrastructure project for the Somnia AI Hackathon, building a robust and verifiable data oracle specifically designed for on-chain autonomous AI agents.**
 
 > Autonomous AI agents operating on the Somnia blockchain require access to reliable, real-world data to make informed decisions. This project solves the fundamental "oracle problem" by providing a secure and validated bridge between the off-chain world and Somnia's on-chain AI agents, unlocking a new dimension of intelligent, autonomous capabilities.
