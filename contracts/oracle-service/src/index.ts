@@ -178,6 +178,20 @@ async function fetchData(dataSourceIdentifier: string, params: string): Promise<
             } else {
                 console.warn(`Could not parse price data for ${coinId}.`);
             }
+        } else if (dataSourceIdentifier === 'exchange') {
+            const baseCurrency = params;
+            const exchangeApiUrl = `https://api.exchangerate-api.com/v4/latest/${baseCurrency}`;
+            const response = await axios.get(exchangeApiUrl);
+
+            if (response.data && response.data.rates) {
+                const rates = response.data.rates;
+                data = JSON.stringify({ base: baseCurrency, rates });
+                // Basic validation: rates object exists
+                validationStatus = Object.keys(rates).length > 0;
+                console.log(`Fetched exchange rates for ${baseCurrency}. Valid: ${validationStatus}`);
+            } else {
+                console.warn(`Could not parse exchange data for ${baseCurrency}.`);
+            }
         } else {
             console.warn(`Unsupported data source identifier: ${dataSourceIdentifier}`);
             data = JSON.stringify({ error: "Unsupported data source" });

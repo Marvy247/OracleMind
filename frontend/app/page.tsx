@@ -151,7 +151,7 @@ export default function Home() {
   const [dataSourceIdentifier, setDataSourceIdentifier] = useState("weather");
   const [params, setParams] = useState("London");
 
-  const dataSources = ["weather", "price"];
+  const dataSources = ["weather", "price", "exchange"];
 
   const cities = [
     "London", "New York", "Tokyo", "Paris", "Sydney", "Berlin", "Moscow", "Beijing", "Mumbai", "Cairo",
@@ -163,6 +163,8 @@ export default function Home() {
   const coins = [
     "bitcoin", "ethereum", "solana", "cardano", "polygon", "chainlink", "avalanche-2", "polkadot", "dogecoin", "shiba-inu"
   ];
+
+  const currencies = ["USD", "EUR", "GBP", "JPY", "CAD"];
   const [currentRequestId, setCurrentRequestId] = useState<Hex | undefined>(undefined);
   const [receivedData, setReceivedData] = useState<string | undefined>(undefined);
   const [validationStatus, setValidationStatus] = useState<boolean | undefined>(undefined);
@@ -304,7 +306,10 @@ export default function Home() {
                 <Label htmlFor="dataSourceIdentifier">Data Source</Label>
                 <Select value={dataSourceIdentifier} onValueChange={(value) => {
                   setDataSourceIdentifier(value);
-                  setParams(value === "weather" ? "London" : "bitcoin");
+                  setParams(value === "weather" ? "London" :
+                            value === "price" ? "bitcoin" :
+                            value === "exchange" ? "USD" :
+                            "");
                 }}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select data source" />
@@ -312,42 +317,65 @@ export default function Home() {
                   <SelectContent>
                     {dataSources.map(source => (
                       <SelectItem key={source} value={source}>
-                        {source === "weather" ? "Weather" : "Crypto Price"}
+                        {source === "weather" ? "Weather" :
+                         source === "price" ? "Crypto Price" :
+                         source === "exchange" ? "Currency Exchange" :
+                         source === "joke" ? "Random Joke" :
+                         "Random Fact"}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="params">{dataSourceIdentifier === "weather" ? "City" : "Cryptocurrency"}</Label>
-                {dataSourceIdentifier === "weather" ? (
-                  <Select value={params} onValueChange={setParams}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a city" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map(city => (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Select value={params} onValueChange={setParams}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a cryptocurrency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {coins.map(coin => (
-                        <SelectItem key={coin} value={coin}>
-                          {coin.charAt(0).toUpperCase() + coin.slice(1).replace('-', ' ')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              {dataSourceIdentifier !== "joke" && dataSourceIdentifier !== "fact" && (
+                <div className="space-y-2">
+                  <Label htmlFor="params">
+                    {dataSourceIdentifier === "weather" ? "City" :
+                     dataSourceIdentifier === "price" ? "Cryptocurrency" :
+                     "Base Currency"}
+                  </Label>
+                  {dataSourceIdentifier === "weather" ? (
+                    <Select value={params} onValueChange={setParams}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map(city => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : dataSourceIdentifier === "price" ? (
+                    <Select value={params} onValueChange={setParams}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a cryptocurrency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {coins.map(coin => (
+                          <SelectItem key={coin} value={coin}>
+                            {coin.charAt(0).toUpperCase() + coin.slice(1).replace('-', ' ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select value={params} onValueChange={setParams}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select base currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map(currency => (
+                          <SelectItem key={currency} value={currency}>
+                            {currency}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
               <Button
                 onClick={handleRequestData}
                 disabled={isPending || isConfirming}
@@ -426,7 +454,9 @@ export default function Home() {
                   </span>
                 </p>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Note: {dataSourceIdentifier === "weather" ? "Temperature data is in Celsius." : "Price data is in USD."}
+                  Note: {dataSourceIdentifier === "weather" ? "Temperature data is in Celsius." :
+                         dataSourceIdentifier === "price" ? "Price data is in USD." :
+                         "Exchange rates are relative to the base currency."}
                 </p>
               </CardContent>
             </Card>
