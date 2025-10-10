@@ -2,17 +2,18 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useWriteContract, useWaitForTransactionReceipt, useWatchContractEvent, useReadContract } from 'wagmi';
 import { parseEther, Hex, hexToBytes } from 'viem';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Database, Search, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide-react';
 
-  // TODO: Replace with actual ABI and contract addresses
   const MOCK_AI_AGENT_CONTRACT_ADDRESS = "0xE398011BfD41E94e4BF40E1Df64e0960F1E37A2C"; // From your deployed contracts
   const ORACLE_CONTRACT_ADDRESS = "0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9f6"; // SomniaOracle address
-const MOCK_AI_AGENT_ABI = [
+  const MOCK_AI_AGENT_ABI = [
   {
     "inputs": [
       {
@@ -149,6 +150,13 @@ const SOMNIA_ORACLE_CONTRACT_ADDRESS = "0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9
 export default function Home() {
   const [dataSourceIdentifier, setDataSourceIdentifier] = useState("weather");
   const [params, setParams] = useState("London");
+
+  const cities = [
+    "London", "New York", "Tokyo", "Paris", "Sydney", "Berlin", "Moscow", "Beijing", "Mumbai", "Cairo",
+    "Rio de Janeiro", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego",
+    "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte", "San Francisco",
+    "Indianapolis", "Seattle", "Denver", "Boston"
+  ];
   const [currentRequestId, setCurrentRequestId] = useState<Hex | undefined>(undefined);
   const [receivedData, setReceivedData] = useState<string | undefined>(undefined);
   const [validationStatus, setValidationStatus] = useState<boolean | undefined>(undefined);
@@ -164,18 +172,21 @@ export default function Home() {
     address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
     abi: MOCK_AI_AGENT_ABI,
     functionName: 'getLastRequestId',
+    query: { refetchInterval: 5000 },
   });
 
   const { data: lastReceivedData } = useReadContract({
     address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
     abi: MOCK_AI_AGENT_ABI,
     functionName: 'getLastReceivedData',
+    query: { refetchInterval: 5000 },
   });
 
   const { data: lastValidationStatus } = useReadContract({
     address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
     abi: MOCK_AI_AGENT_ABI,
     functionName: 'getLastValidationStatus',
+    query: { refetchInterval: 5000 },
   });
 
   // Listen for DataConsumed event from MockAIAgent
@@ -233,33 +244,54 @@ export default function Home() {
   };
 
   const handleCheckData = () => {
-    if (lastReceivedData) {
-      const decodedData = new TextDecoder().decode(hexToBytes(lastReceivedData as Hex));
-      setReceivedData(decodedData);
-      setValidationStatus(lastValidationStatus as boolean);
-      setTxStatus("Data retrieved from contract!");
+    if (lastRequestId && currentRequestId && lastRequestId === currentRequestId) {
+      if (lastReceivedData) {
+        const decodedData = new TextDecoder().decode(hexToBytes(lastReceivedData as Hex));
+        setReceivedData(decodedData);
+        setValidationStatus(lastValidationStatus as boolean);
+        setTxStatus("Data retrieved from contract!");
+      } else {
+        setTxStatus("No data available yet.");
+      }
     } else {
-      setTxStatus("No data available yet.");
+      setTxStatus("No data available for the current request yet. Please wait for oracle fulfillment.");
     }
   };
 
+  const formattedData = useMemo(() => {
+    if (!receivedData) return '';
+    try {
+      const parsed = JSON.parse(receivedData);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return receivedData;
+    }
+  }, [receivedData]);
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="container mx-auto max-w-4xl">
-        <header className="flex justify-between items-center py-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+    <main className="flex-grow bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <section className="py-12 text-center">
+        <div className="container mx-auto max-w-4xl">
+          <Zap className="h-16 w-16 mx-auto mb-4 text-blue-600 dark:text-blue-400 animate-pulse" />
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
             Somnia AI Agent Data Oracle
           </h1>
-          <ConnectButton />
-        </header>
-
-        <div className="grid gap-6 md:grid-cols-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Request Data from Oracle</CardTitle>
-              <CardDescription>
-                Enter the data source and parameters to request information from the Somnia Oracle.
-              </CardDescription>
+          <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">
+            Request real-world data securely for your on-chain AI agents. Decentralized, verifiable, and reliable.
+          </p>
+        </div>
+      </section>
+      <div className="container mx-auto max-w-4xl">
+        <div className="grid gap-8 md:grid-cols-1">
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+              <Database className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+              <div>
+                <CardTitle>Request Data from Oracle</CardTitle>
+                <CardDescription>
+                  Enter the data source and parameters to request information from the Somnia Oracle.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -273,64 +305,99 @@ export default function Home() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="params">Parameters (e.g., City for weather)</Label>
-                <Input
-                  id="params"
-                  type="text"
-                  value={params}
-                  onChange={(e) => setParams(e.target.value)}
-                  placeholder="e.g., London"
-                />
+                <Label htmlFor="params">City</Label>
+                <Select value={params} onValueChange={setParams}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map(city => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button
                 onClick={handleRequestData}
                 disabled={isPending || isConfirming}
-                className="w-full"
+                className="w-full transition-all duration-200 hover:scale-105"
               >
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                 {isPending ? "Confirming..." : isConfirming ? "Requesting..." : "Request Data"}
               </Button>
               <Button
                 onClick={handleCheckData}
                 variant="outline"
-                className="w-full mt-2"
+                className="w-full mt-2 transition-all duration-200 hover:scale-105"
               >
+                <CheckCircle className="mr-2 h-4 w-4" />
                 Check for Received Data
               </Button>
             </CardContent>
           </Card>
 
           {txStatus && (
-            <Alert>
+            <Alert className="shadow-md">
+              <AlertCircle className="h-4 w-4" />
               <AlertDescription>{txStatus}</AlertDescription>
             </Alert>
           )}
 
           {currentRequestId && (
-            <Card>
-              <CardHeader>
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <CheckCircle className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
                 <CardTitle>Request Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Request ID: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{currentRequestId}</code>
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                    Request ID: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono text-sm break-all ml-2">{currentRequestId}</code>
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(currentRequestId)}
+                    className="transition-all duration-200 hover:scale-105"
+                  >
+                    Copy
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
 
           {receivedData && (
-            <Card>
-              <CardHeader>
+            <Card className="shadow-lg hover:shadow-xl transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom-4">
+              <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <Database className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
                 <CardTitle>Received Data</CardTitle>
               </CardHeader>
               <CardContent>
-                <pre className="whitespace-pre-wrap break-all text-sm bg-gray-50 dark:bg-gray-800 p-4 rounded border">
-                  {receivedData}
-                </pre>
-                <p className="mt-2 text-sm">
-                  Validation Status: <span className={validationStatus ? "text-green-600" : "text-red-600"}>
+                <div className="relative">
+                  <pre className="whitespace-pre-wrap break-all text-sm bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border shadow-inner font-mono max-h-64 overflow-y-auto">
+                    {formattedData}
+                  </pre>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(formattedData)}
+                    className="absolute top-2 right-2 transition-all duration-200 hover:scale-105"
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="mt-4 text-sm flex items-center">
+                  <span className="mr-2">Validation Status:</span>
+                  <span className={`flex items-center ${validationStatus ? "text-green-600" : "text-red-600"}`}>
+                    {validationStatus ? <CheckCircle className="h-4 w-4 mr-1" /> : <AlertCircle className="h-4 w-4 mr-1" />}
                     {validationStatus !== undefined ? (validationStatus ? "Valid" : "Invalid") : "N/A"}
                   </span>
+                </p>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Note: Temperature data is in Celsius.
                 </p>
               </CardContent>
             </Card>
