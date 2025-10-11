@@ -1,8 +1,21 @@
 // Somnia AI Gig Economy - Autonomous Agent Service
 
-import { createPublicClient, createWalletClient, http, publicActions, walletActions } from 'viem';
+import 'dotenv/config';
+import { createPublicClient, createWalletClient, http, publicActions, walletActions, defineChain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { mainnet } from 'viem/chains'; // Replace with your actual chain
+
+const somniaTestnet = defineChain({
+  id: 50312,
+  name: 'Somnia Testnet',
+  nativeCurrency: { name: 'Somnia Token', symbol: 'SOMI', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://dream-rpc.somnia.network/'] },
+    public: { http: ['https://dream-rpc.somnia.network/'] },
+  },
+  blockExplorers: {
+    default: { name: 'Somnia Explorer', url: 'https://dream-rpc.somnia.network/explorer' },
+  },
+});
 
 // --- CONFIGURATION ---
 // You can replace these with imports from your frontend config if using a shared workspace
@@ -11,7 +24,7 @@ const TaskMarketplaceAddress = "0x65bfDa8Eb3eeD4b90240C7640D0B49450a83E021";
 const GameSimulatorAddress = "0x0b93c6Ce4A04dce967cB0fA0b046001c49F2AD02";
 
 // Paste the ABIs here (truncated for brevity in this example)
-const AIAgentABI = [{"type":"constructor","inputs":[{"name":"initialOwner","type":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"getAgentSkill","inputs":[{"name":"tokenId","type":"uint256"}],"outputs":[{"name":"","type":"uint8"}],"stateMutability":"view"},{"type":"function","name":"ownerOf","inputs":[{"name":"tokenId","type":"uint256"}],"outputs":[{"name":"","type":"address"}],"stateMutability":"view"}, {"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"}];
+const AIAgentABI = [{"type":"constructor","inputs":[{"name":"initialOwner","type":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"getAgentSkill","inputs":[{"name":"tokenId","type":"uint256"}],"outputs":[{"name":"","type":"uint8"}],"stateMutability":"view"},{"type":"function","name":"ownerOf","inputs":[{"name":"tokenId","type":"uint256"}],"outputs":[{"name":"","type":"address"}],"stateMutability":"view"}, {"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"}, {"type":"error","name":"ERC721NonexistentToken","inputs":[{"name":"tokenId","type":"uint256"}]}];
 const TaskMarketplaceABI = [{"type":"constructor","inputs":[{"name":"_aiAgentContractAddress","type":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"acceptTask","inputs":[{"name":"taskId","type":"uint256"},{"name":"agentId","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"event","name":"TaskPosted","inputs":[{"name":"taskId","type":"uint256","indexed":true},{"name":"employer","type":"address","indexed":true},{"name":"reward","type":"uint256"},{"name":"requiredSkill","type":"uint8"}],"anonymous":false}];
 const GameSimulatorABI = [{"type":"constructor","inputs":[{"name":"_taskMarketplaceAddress","type":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"performTask","inputs":[{"name":"taskId","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}];
 
@@ -22,15 +35,18 @@ if (!agentId) {
   process.exit(1);
 }
 
-const privateKey = process.env.AGENT_PRIVATE_KEY;
+let privateKey = process.env.AGENT_PRIVATE_KEY;
 if (!privateKey) {
   console.error("AGENT_PRIVATE_KEY environment variable not set.");
   process.exit(1);
 }
+if (!privateKey.startsWith('0x')) {
+  privateKey = '0x' + privateKey;
+}
 
 const account = privateKeyToAccount(privateKey);
-const publicClient = createPublicClient({ chain: mainnet, transport: http() });
-const walletClient = createWalletClient({ account, chain: mainnet, transport: http() }).extend(publicActions).extend(walletActions);
+const publicClient = createPublicClient({ chain: somniaTestnet, transport: http() });
+const walletClient = createWalletClient({ account, chain: somniaTestnet, transport: http() }).extend(publicActions).extend(walletActions);
 
 console.log(`🤖 Agent #${agentId} starting up...`);
 console.log(`   Wallet Address: ${account.address}`);
@@ -49,18 +65,24 @@ async function main() {
       process.exit(1);
     }
   } catch (e) {
-    console.error(`Error: Could not verify ownership for Agent #${agentId}. Does it exist?`);
-    process.exit(1);
+    console.error(`Error: Could not verify ownership for Agent #${agentId}. Does it exist? Error: ${e.message}`);
+    console.log(`Continuing without ownership verification. The agent may not be minted yet.`);
   }
 
   // 2. Get the agent's skill
-  const agentSkill = await publicClient.readContract({
-    address: AIAgentAddress,
-    abi: AIAgentABI,
-    functionName: 'getAgentSkill',
-    args: [BigInt(agentId)]
-  });
-  console.log(`   Skill Level: ${agentSkill}`);
+  let agentSkill;
+  try {
+    agentSkill = await publicClient.readContract({
+      address: AIAgentAddress,
+      abi: AIAgentABI,
+      functionName: 'getAgentSkill',
+      args: [BigInt(agentId)]
+    });
+    console.log(`   Skill Level: ${agentSkill}`);
+  } catch (e) {
+    console.error(`Error: Could not get skill for Agent #${agentId}. Setting to 0. Error: ${e.message}`);
+    agentSkill = 0;
+  }
 
   // 3. Listen for new tasks
   console.log("\n👂 Listening for new tasks on the marketplace...");

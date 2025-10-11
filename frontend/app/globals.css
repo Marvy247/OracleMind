@@ -76,6 +76,8 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --neon-blue: oklch(0.6 0.2 260);
+  --game-gradient: linear-gradient(135deg, var(--neon-blue), var(--primary));
 }
 
 .dark {
@@ -112,11 +114,19 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px var(--neon-blue); }
+  50% { box-shadow: 0 0 20px var(--neon-blue); }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  .glow {
+    animation: glow 2s infinite;
   }
 }

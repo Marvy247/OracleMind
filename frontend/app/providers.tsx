@@ -12,6 +12,8 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 
+import { ThemeProvider } from 'next-themes';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const somniaTestnet = defineChain({
     id: 50312,
@@ -39,7 +41,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
-          {children}
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            {children}
+          </ThemeProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
