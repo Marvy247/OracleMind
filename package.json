@@ -1,0 +1,12 @@
+{
+  "name": "somnia-agent-service",
+  "version": "1.0.0",
+  "description": "Autonomous agent service for the Somnia AI Gig Economy",
+  "main": "agent-service.js",
+  "scripts": {
+    "start": "node agent-service.js"
+  },
+  "dependencies": {
+    "viem": "^2.7.12"
+  }
+}

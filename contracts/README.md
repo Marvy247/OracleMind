@@ -1,2 +1,3 @@
-SomniaOracle Contract Address= 0x94E7b61ACfdDA06c74A8e56Fc55261AF94bda9f6
-MockAIAgent Contract Address= 0xE398011BfD41E94e4BF40E1Df64e0960F1E37A2C
+AIAgent Contract Address = 0xC79157189380c3b5ab7fF25f622DaA1e2Cf5FcB5
+TaskMarketplace Contract Address = 0x65bfDa8Eb3eeD4b90240C7640D0B49450a83E021
+GameSimulator Contract Address = 0x0b93c6Ce4A04dce967cB0fA0b046001c49F2AD02

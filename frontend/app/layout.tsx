@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OracleMind - Decentralized AI Data Oracle",
-  description: "Secure and verifiable data oracle for on-chain AI agents",
+  title: "Somnia AI Gig Economy",
+  description: "A decentralized marketplace for autonomous AI agents.",
 };
 
 export default function RootLayout({
@@ -36,6 +37,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <Toaster />
         </Providers>
       </body>
     </html>

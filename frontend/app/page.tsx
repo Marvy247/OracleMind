@@ -1,466 +1,346 @@
 'use client';
-import { useWriteContract, useWaitForTransactionReceipt, useWatchContractEvent, useReadContract } from 'wagmi';
-import { Hex, hexToBytes } from 'viem';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useReadContracts } from 'wagmi';
 import { useState, useEffect, useMemo } from 'react';
+import { parseEther, formatEther } from 'viem';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Database, Search, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AIAgentAddress, AIAgentABI, TaskMarketplaceAddress, TaskMarketplaceABI } from '@/lib/contractConfig';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-  const MOCK_AI_AGENT_CONTRACT_ADDRESS = "0xE398011BfD41E94e4BF40E1Df64e0960F1E37A2C"; // From your deployed contracts
+const SKILL_MAP: { [key: number]: string } = { 1: 'Mining', 2: 'Woodcutting', 3: 'Fishing' };
 
-  const MOCK_AI_AGENT_ABI = [
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_somniaOracleAddress",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "requestId",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes",
-        "name": "data",
-        "type": "bytes"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "validationStatus",
-        "type": "bool"
-      }
-    ],
-    "name": "DataConsumed",
-    "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "getLastReceivedData",
-    "outputs": [
-      {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getLastRequestId",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getLastValidationStatus",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_requestId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_data",
-        "type": "bytes"
-      },
-      {
-        "internalType": "bool",
-        "name": "_validationStatus",
-        "type": "bool"
-      }
-    ],
-    "name": "oracleCallback",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_dataSourceIdentifier",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_params",
-        "type": "string"
-      }
-    ],
-    "name": "requestDataFromOracle",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "somniaOracle",
-    "outputs": [
-      {
-        "internalType": "contract SomniaOracle",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-] as const;
+// --- Accept Task Dialog ---
+function AcceptTaskDialog({ task, ownedAgents, onAccept }: { task: any, ownedAgents: any[], onAccept: (taskId: bigint, agentId: bigint) => void }) {
+  const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const qualifiedAgents = ownedAgents.filter(agent => SKILL_MAP[task.requiredSkill] === agent.skill);
 
-
-
-export default function Home() {
-  const [dataSourceIdentifier, setDataSourceIdentifier] = useState("weather");
-  const [params, setParams] = useState("London");
-
-  const dataSources = ["price", "exchange", "weather"];
-
-  const cities = [
-    "London", "New York", "Tokyo", "Paris", "Sydney", "Berlin", "Moscow", "Beijing", "Mumbai", "Cairo",
-    "Rio de Janeiro", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego",
-    "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte", "San Francisco",
-    "Indianapolis", "Seattle", "Denver", "Boston"
-  ];
-
-  const coins = [
-    "bitcoin", "ethereum", "solana", "cardano", "polygon", "chainlink", "avalanche-2", "polkadot", "dogecoin", "shiba-inu"
-  ];
-
-  const currencies = ["USD", "EUR", "GBP", "JPY", "CAD"];
-  const [currentRequestId, setCurrentRequestId] = useState<Hex | undefined>(undefined);
-  const [receivedData, setReceivedData] = useState<string | undefined>(undefined);
-  const [validationStatus, setValidationStatus] = useState<boolean | undefined>(undefined);
-  const [txStatus, setTxStatus] = useState<string | undefined>(undefined);
-
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
-  });
-
-  const { data: lastRequestId } = useReadContract({
-    address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
-    abi: MOCK_AI_AGENT_ABI,
-    functionName: 'getLastRequestId',
-    query: { refetchInterval: 5000 },
-  });
-
-  const { data: lastReceivedData } = useReadContract({
-    address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
-    abi: MOCK_AI_AGENT_ABI,
-    functionName: 'getLastReceivedData',
-    query: { refetchInterval: 5000 },
-  });
-
-  const { data: lastValidationStatus } = useReadContract({
-    address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
-    abi: MOCK_AI_AGENT_ABI,
-    functionName: 'getLastValidationStatus',
-    query: { refetchInterval: 5000 },
-  });
-
-  // Listen for DataConsumed event from MockAIAgent
-  useWatchContractEvent({
-    address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
-    abi: MOCK_AI_AGENT_ABI,
-    eventName: 'DataConsumed',
-    onLogs: logs => {
-      for (const log of logs) {
-        if (log.args.requestId === currentRequestId) {
-          const decodedData = log.args.data ? new TextDecoder().decode(hexToBytes(log.args.data as Hex)) : undefined;
-          setReceivedData(decodedData);
-          setValidationStatus(log.args.validationStatus);
-          setTxStatus("Data received on-chain!");
-          console.log("DataConsumed event received:", log.args);
-        }
-      }
-    },
-  });
-
-  useEffect(() => {
-    if (hash) {
-      setTxStatus(`Transaction sent: ${hash}`);
-    }
-    if (isConfirming) {
-      setTxStatus("Waiting for transaction confirmation...");
-    }
-    if (isConfirmed) {
-      setTxStatus("Transaction confirmed. Waiting for oracle fulfillment...");
-      if (lastRequestId) {
-        setCurrentRequestId(lastRequestId as Hex);
-      }
-    }
-    if (error) {
-      setTxStatus(`Error: ${error.message}`);
-      console.error("Write contract error:", error);
-    }
-  }, [hash, isConfirming, isConfirmed, error, lastRequestId]);
-
-  const handleRequestData = async () => {
-    setReceivedData(undefined);
-    setValidationStatus(undefined);
-    setTxStatus("Sending data request...");
-    try {
-      writeContract({
-        address: MOCK_AI_AGENT_CONTRACT_ADDRESS,
-        abi: MOCK_AI_AGENT_ABI,
-        functionName: 'requestDataFromOracle',
-        args: [dataSourceIdentifier, params],
-      });
-    } catch (err) {
-      setTxStatus(`Error: ${(err as Error).message}`);
-      console.error("Request data error:", err);
-    }
+  const handleAccept = () => {
+    if (!selectedAgent) return;
+    onAccept(task.taskId, BigInt(selectedAgent));
   };
-
-  const handleCheckData = () => {
-    if (lastRequestId && currentRequestId && lastRequestId === currentRequestId) {
-      if (lastReceivedData) {
-        const decodedData = new TextDecoder().decode(hexToBytes(lastReceivedData as Hex));
-        setReceivedData(decodedData);
-        setValidationStatus(lastValidationStatus as boolean);
-        setTxStatus("Data retrieved from contract!");
-      } else {
-        setTxStatus("No data available yet.");
-      }
-    } else {
-      setTxStatus("No data available for the current request yet. Please wait for oracle fulfillment.");
-    }
-  };
-
-  const formattedData = useMemo(() => {
-    if (!receivedData) return '';
-    try {
-      const parsed = JSON.parse(receivedData);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return receivedData;
-    }
-  }, [receivedData]);
 
   return (
-    <main className="flex-grow bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <section className="py-12 text-center">
-        <div className="container mx-auto max-w-4xl">
-          <Zap className="h-16 w-16 mx-auto mb-4 text-blue-600 dark:text-blue-400 animate-pulse" />
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
-            OracleMind
-          </h1>
-          <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8">
-            Request real-world data securely for your on-chain AI agents. Decentralized, verifiable, and reliable.
-          </p>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button disabled={qualifiedAgents.length === 0}>Accept Task</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Accept Task #{String(task.taskId)}</DialogTitle>
+          <DialogDescription>Select one of your qualified agents to perform this task.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p>Required Skill: <strong>{SKILL_MAP[task.requiredSkill]}</strong></p>
+          <Select onValueChange={setSelectedAgent}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a qualified agent..." />
+            </SelectTrigger>
+            <SelectContent>
+              {qualifiedAgents.map(agent => (
+                <SelectItem key={agent.id} value={String(agent.id)}>Agent #{agent.id} ({agent.skill})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </section>
-      <div className="container mx-auto max-w-4xl">
-        <div className="grid gap-8 md:grid-cols-1">
-          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-              <Database className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-              <div>
-                <CardTitle>Request Data from Oracle</CardTitle>
-                <CardDescription>
-                  Enter the data source and parameters to request information from the Somnia Oracle.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="dataSourceIdentifier">Data Source</Label>
-                <Select value={dataSourceIdentifier} onValueChange={(value) => {
-                  setDataSourceIdentifier(value);
-                  setParams(value === "weather" ? "London" :
-                            value === "price" ? "bitcoin" :
-                            value === "exchange" ? "USD" :
-                            "");
-                }}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select data source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dataSources.map(source => (
-                      <SelectItem key={source} value={source}>
-                        {source === "weather" ? "Weather" :
-                         source === "price" ? "Crypto Price Feed" :
-                         source === "exchange" ? "Currency Exchange" :
-                         source === "joke" ? "Random Joke" :
-                         "Random Fact"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {dataSourceIdentifier !== "joke" && dataSourceIdentifier !== "fact" && (
-                <div className="space-y-2">
-                  <Label htmlFor="params">
-                    {dataSourceIdentifier === "weather" ? "City" :
-                     dataSourceIdentifier === "price" ? "Cryptocurrency" :
-                     "Base Currency"}
-                  </Label>
-                  {dataSourceIdentifier === "weather" ? (
-                    <Select value={params} onValueChange={setParams}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a city" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cities.map(city => (
-                          <SelectItem key={city} value={city}>
-                            {city}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : dataSourceIdentifier === "price" ? (
-                    <Select value={params} onValueChange={setParams}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a cryptocurrency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {coins.map(coin => (
-                          <SelectItem key={coin} value={coin}>
-                            {coin.charAt(0).toUpperCase() + coin.slice(1).replace('-', ' ')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Select value={params} onValueChange={setParams}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select base currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currencies.map(currency => (
-                          <SelectItem key={currency} value={currency}>
-                            {currency}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              )}
-              <Button
-                onClick={handleRequestData}
-                disabled={isPending || isConfirming}
-                className="w-full transition-all duration-200 hover:scale-105"
-              >
-                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                {isPending ? "Confirming..." : isConfirming ? "Requesting..." : "Request Data"}
-              </Button>
-              <Button
-                onClick={handleCheckData}
-                variant="outline"
-                className="w-full mt-2 transition-all duration-200 hover:scale-105"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Check for Received Data
-              </Button>
-            </CardContent>
-          </Card>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <DialogClose asChild>
+            <Button onClick={handleAccept} disabled={!selectedAgent}>Confirm & Accept</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-          {txStatus && (
-            <Alert className="shadow-md">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{txStatus}</AlertDescription>
-            </Alert>
-          )}
+// --- Task Marketplace Tab ---
+function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const { data: taskCountData, isLoading: isTaskCountLoading, refetch: refetchTasks } = useReadContract({
+    address: TaskMarketplaceAddress,
+    abi: TaskMarketplaceABI,
+    functionName: 'getTaskCount',
+  });
+  const taskCount = taskCountData ? Number(taskCountData) : 0;
 
-          {currentRequestId && (
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-                <CheckCircle className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-                <CardTitle>Request Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                    Request ID: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono text-sm break-all ml-2">{currentRequestId}</code>
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigator.clipboard.writeText(currentRequestId)}
-                    className="transition-all duration-200 hover:scale-105"
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+  const taskContracts = useMemo(() => {
+    if (taskCount === 0) return [];
+    return Array.from({ length: taskCount }, (_, i) => i + 1).map(taskId => ({
+      address: TaskMarketplaceAddress,
+      abi: TaskMarketplaceABI,
+      functionName: 'getTask',
+      args: [BigInt(taskId)],
+    }));
+  }, [taskCount]);
 
-          {receivedData && (
-            <Card className="shadow-lg hover:shadow-xl transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom-4">
-              <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-                <Database className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
-                <CardTitle>Received Data</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative">
-                  <pre className="whitespace-pre-wrap break-all text-sm bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border shadow-inner font-mono max-h-64 overflow-y-auto">
-                    {formattedData}
-                  </pre>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigator.clipboard.writeText(formattedData)}
-                    className="absolute top-2 right-2 transition-all duration-200 hover:scale-105"
-                  >
-                    Copy
-                  </Button>
-                </div>
-                <p className="mt-4 text-sm flex items-center">
-                  <span className="mr-2">Validation Status:</span>
-                  <span className={`flex items-center ${validationStatus ? "text-green-600" : "text-red-600"}`}>
-                    {validationStatus ? <CheckCircle className="h-4 w-4 mr-1" /> : <AlertCircle className="h-4 w-4 mr-1" />}
-                    {validationStatus !== undefined ? (validationStatus ? "Valid" : "Invalid") : "N/A"}
-                  </span>
-                </p>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Note: {dataSourceIdentifier === "weather" ? "Temperature data is in Celsius." :
-                         dataSourceIdentifier === "price" ? "Price data is in USD." :
-                         "Exchange rates are relative to the base currency."}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+  const { data: tasksData, isLoading: areTasksLoading } = useReadContracts({ contracts: taskContracts });
+
+  useEffect(() => {
+    if (tasksData) {
+      const openTasks = (tasksData as any[])
+        .filter(taskResult => taskResult.status === 'success' && taskResult.result.status === 0) // 0 = OPEN
+        .map(taskResult => taskResult.result);
+      setTasks(openTasks);
+    }
+  }, [tasksData]);
+
+  const { data: hash, writeContract } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const handleAcceptTask = (taskId: bigint, agentId: bigint) => {
+    writeContract({
+      address: TaskMarketplaceAddress,
+      abi: TaskMarketplaceABI,
+      functionName: 'acceptTask',
+      args: [taskId, agentId],
+    });
+  };
+
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success("Task Accepted!", { description: "Your agent is now on the job." });
+      refetchTasks();
+    }
+  }, [isConfirmed, refetchTasks]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Available Tasks</CardTitle>
+        <CardDescription>Browse and accept tasks for your AI agents.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Reward</TableHead>
+              <TableHead>Required Skill</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {areTasksLoading ? (
+              <TableRow><TableCell colSpan={5}>Loading tasks...</TableCell></TableRow>
+            ) : tasks.length > 0 ? tasks.map(task => (
+              <TableRow key={String(task.taskId)}>
+                <TableCell>{String(task.taskId)}</TableCell>
+                <TableCell>{task.description}</TableCell>
+                <TableCell>{formatEther(task.reward)} ETH</TableCell>
+                <TableCell>{SKILL_MAP[task.requiredSkill]}</TableCell>
+                <TableCell>
+                  <AcceptTaskDialog task={task} ownedAgents={ownedAgents} onAccept={handleAcceptTask} />
+                </TableCell>
+              </TableRow>
+            )) : (
+              <TableRow><TableCell colSpan={5}>No open tasks available.</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- My Agents Tab ---
+function MyAgentsTab({ ownedAgents, isLoading, onMint }) {
+  const [selectedSkill, setSelectedSkill] = useState('1');
+  const { data: hash, writeContract, isPending } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+
+  const handleMint = () => {
+    onMint(BigInt(selectedSkill));
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>My AI Agents</CardTitle>
+        <CardDescription>Manage your agent NFTs and mint new ones.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {isLoading ? <p>Loading your agents...</p> : 
+            ownedAgents.length > 0 ? ownedAgents.map(agent => (
+              <Card key={agent.id}>
+                <CardHeader><CardTitle>Agent #{agent.id}</CardTitle></CardHeader>
+                <CardContent><p>Skill: {agent.skill}</p></CardContent>
+              </Card>
+            )) : <p>You don't own any agents yet.</p>
+          }
         </div>
-      </div>
+        <div className="mt-6 pt-6 border-t">
+          <h3 className="text-lg font-semibold mb-4">Mint a New Agent</h3>
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="w-full sm:w-auto flex-grow">
+              <Label htmlFor="skill-select">Agent Skill</Label>
+              <Select onValueChange={setSelectedSkill} defaultValue={selectedSkill}>
+                <SelectTrigger id="skill-select"><SelectValue placeholder="Select a skill" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Mining</SelectItem>
+                  <SelectItem value="2">Woodcutting</SelectItem>
+                  <SelectItem value="3">Fishing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleMint} disabled={isPending || isConfirming} className="w-full sm:w-auto">
+              {isPending || isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isConfirming ? 'Minting...' : 'Mint Agent'}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Post a Task Tab ---
+function PostTaskTab({ onTaskPosted }) {
+  const [description, setDescription] = useState('');
+  const [reward, setReward] = useState('');
+  const [requiredSkill, setRequiredSkill] = useState('1');
+  const { data: hash, writeContract, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const handlePostTask = () => {
+    if (!description || !reward) return;
+    const rewardInWei = parseEther(reward as `${number}`);
+    writeContract({
+      address: TaskMarketplaceAddress,
+      abi: TaskMarketplaceABI,
+      functionName: 'postTask',
+      args: [description, rewardInWei, BigInt(requiredSkill)],
+      value: rewardInWei,
+    });
+  };
+
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success("Task Posted!", { description: "Your task is now live on the marketplace." });
+      setDescription('');
+      setReward('');
+      onTaskPosted();
+    }
+  }, [isConfirmed, onTaskPosted]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Post a New Task</CardTitle>
+        <CardDescription>Create a new job for the AI agent marketplace.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="description">Task Description</Label>
+          <Input id="description" placeholder="e.g., Gather 100 wood" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="reward">Reward (in ETH)</Label>
+          <Input id="reward" placeholder="0.01" value={reward} onChange={(e) => setReward(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="skill">Required Skill</Label>
+          <Select onValueChange={setRequiredSkill} defaultValue={requiredSkill}>
+            <SelectTrigger id="skill"><SelectValue placeholder="Select a skill" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Mining</SelectItem>
+              <SelectItem value="2">Woodcutting</SelectItem>
+              <SelectItem value="3">Fishing</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={handlePostTask} disabled={isPending || isConfirming}>
+          {isPending || isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {isConfirming ? 'Posting Task...' : 'Post Task'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Main Home Component ---
+export default function Home() {
+  const { address } = useAccount();
+  const [ownedAgents, setOwnedAgents] = useState<any[]>([]);
+
+  // Agent Fetching Logic
+  const { data: totalSupplyData, isLoading: isAgentTotalSupplyLoading, refetch: refetchAgentTotalSupply } = useReadContract({
+    address: AIAgentAddress,
+    abi: AIAgentABI,
+    functionName: 'totalSupply',
+  });
+  const agentTotalSupply = totalSupplyData ? Number(totalSupplyData) : 0;
+
+  const agentOwnerContracts = useMemo(() => {
+    if (agentTotalSupply === 0) return [];
+    return Array.from({ length: agentTotalSupply }, (_, i) => i + 1).map(tokenId => ({ address: AIAgentAddress, abi: AIAgentABI, functionName: 'ownerOf', args: [BigInt(tokenId)] }));
+  }, [agentTotalSupply]);
+
+  const { data: ownersData, isLoading: areOwnersLoading } = useReadContracts({ contracts: agentOwnerContracts });
+
+  const ownedTokenIds = useMemo(() => {
+    if (!ownersData || !address) return [];
+    return ownersData.map((r, i) => ({ ...r, tokenId: i + 1 })).filter(r => r.status === 'success' && r.result === address).map(r => BigInt(r.tokenId));
+  }, [ownersData, address]);
+
+  const agentSkillContracts = useMemo(() => {
+    if (ownedTokenIds.length === 0) return [];
+    return ownedTokenIds.map(tokenId => ({ address: AIAgentAddress, abi: AIAgentABI, functionName: 'getAgentSkill', args: [tokenId] }));
+  }, [ownedTokenIds]);
+
+  const { data: skillsData, isLoading: areSkillsLoading } = useReadContracts({ contracts: agentSkillContracts });
+
+  useEffect(() => {
+    if (skillsData) {
+      const agents = ownedTokenIds.map((tokenId, index) => ({ id: Number(tokenId), skill: SKILL_MAP[skillsData[index].result as number] || 'Unknown' }));
+      setOwnedAgents(agents);
+    }
+  }, [skillsData, ownedTokenIds]);
+
+  // Contract Write Logic
+  const { data: hash, writeContract } = useWriteContract();
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const handleMint = (skill: bigint) => {
+    if (!address) return;
+    writeContract({ address: AIAgentAddress, abi: AIAgentABI, functionName: 'mint', args: [address, skill] });
+  };
+
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success("Success!", { description: "Your transaction has been confirmed." });
+      refetchAgentTotalSupply();
+    }
+  }, [isConfirmed, refetchAgentTotalSupply]);
+
+  return (
+    <main className="container mx-auto px-4 py-8">
+      <Tabs defaultValue="marketplace" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="marketplace">Task Marketplace</TabsTrigger>
+          <TabsTrigger value="agents">My Agents</TabsTrigger>
+          <TabsTrigger value="post">Post a Task</TabsTrigger>
+        </TabsList>
+        <TabsContent value="marketplace">
+          <TaskMarketplaceTab ownedAgents={ownedAgents} />
+        </TabsContent>
+        <TabsContent value="agents">
+          <MyAgentsTab ownedAgents={ownedAgents} isLoading={areOwnersLoading || areSkillsLoading} onMint={handleMint} />
+        </TabsContent>
+        <TabsContent value="post">
+          <PostTaskTab onTaskPosted={() => { /* Add refetch for tasks here */ }} />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }
