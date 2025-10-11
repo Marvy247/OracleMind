@@ -14,10 +14,10 @@ import { AIAgentAddress, AIAgentABI, TaskMarketplaceAddress, TaskMarketplaceABI,
 import { Loader2, Pickaxe, Axe, Fish } from 'lucide-react';
 import { toast } from 'sonner';
 
-const SKILL_MAP = new Map<bigint, { name: string, icon: React.ComponentType<any> }>([
-  [1n, { name: 'Mining', icon: Pickaxe }],
-  [2n, { name: 'Woodcutting', icon: Axe }],
-  [3n, { name: 'Fishing', icon: Fish }],
+const SKILL_MAP = new Map<number, { name: string, icon: React.ComponentType<any> }>([
+  [1, { name: 'Mining', icon: Pickaxe }],
+  [2, { name: 'Woodcutting', icon: Axe }],
+  [3, { name: 'Fishing', icon: Fish }],
 ]);
 
 // --- Accept Task Dialog ---
@@ -153,7 +153,7 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Reward</TableHead>
+              <TableHead>Reward (SOMI)</TableHead>
               <TableHead>Required Skill</TableHead>
               <TableHead></TableHead>
             </TableRow>
@@ -165,7 +165,7 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
               <TableRow key={String(task.taskId)}>
                 <TableCell>{String(task.taskId)}</TableCell>
                 <TableCell>{task.description}</TableCell>
-                <TableCell>{formatEther(task.reward)} ETH</TableCell>
+                <TableCell>{formatEther(task.reward)} SOMI</TableCell>
                 <TableCell>{SKILL_MAP.get(task.requiredSkill)?.name}</TableCell>
                 <TableCell>
                   <AcceptTaskDialog task={task} ownedAgents={ownedAgents} onAccept={(taskId, agentId) => handleAcceptTask(taskId, agentId, task)} />
@@ -182,8 +182,8 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
 }
 
 // --- My Agents Tab ---
-function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedAgents: any[], isLoading: boolean, onMint: (skill: bigint) => void, woodInventory: number }) {
-  const [selectedSkill, setSelectedSkill] = useState(1n);
+function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedAgents: any[], isLoading: boolean, onMint: (skill: number) => void, woodInventory: number }) {
+  const [selectedSkill, setSelectedSkill] = useState(1);
   const [taskId, setTaskId] = useState('');
   const { data: hash, writeContract, isPending } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
@@ -234,7 +234,7 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedA
           <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="w-full sm:w-auto flex-grow">
             <Label htmlFor="skill-select">Agent Skill</Label>
-            <Select onValueChange={(value) => setSelectedSkill(BigInt(value))} defaultValue={String(selectedSkill)}>
+            <Select onValueChange={(value) => setSelectedSkill(Number(value))} defaultValue={String(selectedSkill)}>
               <SelectTrigger id="skill-select"><SelectValue placeholder="Select a skill" /></SelectTrigger>
               <SelectContent>
                 {Array.from(SKILL_MAP.entries()).map(([key, skill]) => (
@@ -279,7 +279,7 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedA
 function PostTaskTab({ onTaskPosted }: { onTaskPosted: () => void }) {
   const [description, setDescription] = useState('');
   const [reward, setReward] = useState('');
-  const [requiredSkill, setRequiredSkill] = useState(1n);
+  const [requiredSkill, setRequiredSkill] = useState<number>(1);
   const { data: hash, writeContract, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
@@ -321,12 +321,12 @@ function PostTaskTab({ onTaskPosted }: { onTaskPosted: () => void }) {
           <Input id="description" placeholder="e.g., Gather 100 wood" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="reward">Reward (in ETH)</Label>
+          <Label htmlFor="reward">Reward (in SOMI)</Label>
           <Input id="reward" placeholder="0.01" value={reward} onChange={(e) => setReward(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="skill">Required Skill</Label>
-          <Select onValueChange={(value) => setRequiredSkill(BigInt(value))} defaultValue={String(requiredSkill)}>
+          <Select onValueChange={(value) => setRequiredSkill(Number(value))} defaultValue={String(requiredSkill)}>
             <SelectTrigger id="skill"><SelectValue placeholder="Select a skill" /></SelectTrigger>
             <SelectContent>
               {Array.from(SKILL_MAP.entries()).map(([key, skill]) => (
@@ -383,7 +383,7 @@ export default function Home() {
     if (skillsData) {
       const agents = ownedTokenIds.map((tokenId, index) => {
         const skillNum = Number((skillsData[index].result as bigint));
-        const skillData = SKILL_MAP[skillNum];
+        const skillData = SKILL_MAP.get(skillNum);
         return { id: Number(tokenId), skill: skillData?.name || 'Unknown', icon: skillData?.icon || null };
       });
       setOwnedAgents(agents);
@@ -401,7 +401,7 @@ export default function Home() {
     args: [address || '0x0'],
   });
 
-  const handleMint = (skill: bigint) => {
+  const handleMint = (skill: number) => {
     if (!address) return;
     writeContract({ address: AIAgentAddress, abi: AIAgentABI, functionName: 'mint', args: [address, skill] });
   };
