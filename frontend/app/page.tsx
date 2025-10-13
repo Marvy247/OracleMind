@@ -67,34 +67,44 @@ function AcceptTaskDialog({ task, ownedAgents, onAccept }: { task: any, ownedAge
 }
 
 // --- Task Marketplace Tab ---
-function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
+function TaskMarketplaceTab({ ownedAgents, refetchTasks }: { ownedAgents: any[], refetchTasks: () => void }) {
   const [tasks, setTasks] = useState<any[]>([]);
   const [acceptedTask, setAcceptedTask] = useState<any>(null);
-  const { data: taskCountData, isLoading: isTaskCountLoading, refetch: refetchTasks } = useReadContract({
+  const { data: taskCountData, isLoading: isTaskCountLoading, refetch: localRefetchTasks } = useReadContract({
     address: TaskMarketplaceAddress,
     abi: TaskMarketplaceABI,
     functionName: 'getTaskCount',
   });
   const taskCount = taskCountData ? Number((taskCountData as bigint) || 0n) : 0;
+  console.log('Task count:', taskCount);
 
   const taskContracts = useMemo(() => {
     if (taskCount === 0) return [];
-    return Array.from({ length: taskCount }, (_, i) => i + 1).map(taskId => ({
+    return Array.from({ length: taskCount }, (_, i) => i).map(taskId => ({
       address: TaskMarketplaceAddress,
       abi: TaskMarketplaceABI,
       functionName: 'getTask',
-      args: [BigInt(taskId)],
+      args: [BigInt(taskId + 1)],
     }));
   }, [taskCount]);
 
   const { data: tasksData, isLoading: areTasksLoading } = useReadContracts({ contracts: taskContracts });
+  console.log('Task contracts:', taskContracts);
+  console.log('Tasks data:', tasksData);
 
   useEffect(() => {
     if (tasksData) {
+      console.log('Processing tasks data:', tasksData);
       const openTasks = (tasksData as any[])
-        .filter(taskResult => taskResult.status === 'success' && taskResult.result.status === 0n) // 0 = OPEN
+        .filter(taskResult => {
+          console.log('Task result:', taskResult);
+          console.log('Task result status:', taskResult.result?.status);
+          return taskResult.status === 'success' && taskResult.result && taskResult.result.status === 0;
+        }) // 0 = OPEN
         .map(taskResult => taskResult.result);
       setTasks(openTasks);
+      console.log('Fetched tasks:', openTasks);
+      console.log('All tasks data:', tasksData);
     }
   }, [tasksData]);
 
@@ -122,9 +132,9 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
   useEffect(() => {
     if (isConfirmed && !acceptedTask) {
       toast.success("Task Accepted!", { description: "Your agent is now on the job." });
-      refetchTasks();
+      localRefetchTasks();
     }
-  }, [isConfirmed, acceptedTask, refetchTasks]);
+  }, [isConfirmed, acceptedTask, localRefetchTasks]);
 
   return (
     <Card>
@@ -387,7 +397,9 @@ function PostTaskTab({ onTaskPosted }: { onTaskPosted: () => void }) {
       toast.success("Task Posted!", { description: "Your task is now live on the marketplace." });
       setDescription('');
       setReward('');
-      onTaskPosted();
+      setRequiredSkill(1);
+      // Force refetch of task count after posting
+      setTimeout(() => onTaskPosted(), 1000);
     }
   }, [isConfirmed, onTaskPosted]);
 
@@ -504,6 +516,11 @@ export default function Home() {
     functionName: 'getTaskCount',
   });
 
+  useEffect(() => {
+    // Refetch tasks when component mounts
+    refetchTasks();
+  }, []);
+
   return (
     <main className="container mx-auto px-4 py-8 min-h-screen">
       <Tabs defaultValue="marketplace" className="w-full">
@@ -513,7 +530,7 @@ export default function Home() {
           <TabsTrigger value="post">Post a Task</TabsTrigger>
         </TabsList>
         <TabsContent value="marketplace">
-          <TaskMarketplaceTab ownedAgents={ownedAgents} />
+          <TaskMarketplaceTab ownedAgents={ownedAgents} refetchTasks={refetchTasks} />
         </TabsContent>
         <TabsContent value="agents">
           <MyAgentsTab ownedAgents={ownedAgents} isLoading={areTokenIdsLoading || areSkillsLoading} onMint={handleMint} woodInventory={Number((woodInventoryData as bigint) || 0n)} refetchAgents={refetchBalance} hash={hash} />

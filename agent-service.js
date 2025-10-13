@@ -53,6 +53,8 @@ console.log(`   Wallet Address: ${account.address}`);
 
 async function main() {
   // 1. Verify this agent exists and is owned by this wallet
+  let agentExists = false;
+  let agentSkill = 0;
   try {
     const owner = await publicClient.readContract({
       address: AIAgentAddress,
@@ -64,24 +66,27 @@ async function main() {
       console.error(`Error: This wallet does not own Agent #${agentId}. Owner is ${owner}.`);
       process.exit(1);
     }
+    agentExists = true;
   } catch (e) {
-    console.error(`Error: Could not verify ownership for Agent #${agentId}. Does it exist? Error: ${e.message}`);
-    console.log(`Continuing without ownership verification. The agent may not be minted yet.`);
+    console.log(`Agent #${agentId} not found or not owned by this wallet. Continuing without ownership verification.`);
   }
 
-  // 2. Get the agent's skill
-  let agentSkill;
-  try {
-    agentSkill = await publicClient.readContract({
-      address: AIAgentAddress,
-      abi: AIAgentABI,
-      functionName: 'getAgentSkill',
-      args: [BigInt(agentId)]
-    });
-    console.log(`   Skill Level: ${agentSkill}`);
-  } catch (e) {
-    console.error(`Error: Could not get skill for Agent #${agentId}. Setting to 0. Error: ${e.message}`);
-    agentSkill = 0;
+  // 2. Get the agent's skill if it exists
+  if (agentExists) {
+    try {
+      agentSkill = await publicClient.readContract({
+        address: AIAgentAddress,
+        abi: AIAgentABI,
+        functionName: 'getAgentSkill',
+        args: [BigInt(agentId)]
+      });
+      console.log(`   Skill Level: ${agentSkill}`);
+    } catch (e) {
+      console.error(`Error: Could not get skill for Agent #${agentId}. Setting to 0. Error: ${e.message}`);
+      agentSkill = 0;
+    }
+  } else {
+    console.log(`   Skill Level: Not available (agent not minted)`);
   }
 
   // 3. Listen for new tasks
