@@ -101,8 +101,7 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
   const { data: hash, writeContract } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
-  const { data: hash2, writeContract: writeContract2 } = useWriteContract();
-  const { isLoading: isConfirming2, isSuccess: isConfirmed2 } = useWaitForTransactionReceipt({ hash: hash2 });
+
 
   const handleAcceptTask = (taskId: bigint, agentId: bigint, task: any) => {
     setAcceptedTask(task);
@@ -116,23 +115,9 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
 
   useEffect(() => {
     if (isConfirmed && acceptedTask) {
-      if (acceptedTask.requiredSkill === 2) { // WOODCUTTING
-        writeContract2({
-          address: GameSimulatorAddress,
-          abi: GameSimulatorABI,
-          functionName: 'performTask',
-          args: [acceptedTask.taskId],
-        });
-      }
       setAcceptedTask(null);
     }
-  }, [isConfirmed, acceptedTask, writeContract2]);
-
-  useEffect(() => {
-    if (isConfirmed2) {
-      toast.success("Task Simulated!", { description: "Wood added to your inventory." });
-    }
-  }, [isConfirmed2]);
+  }, [isConfirmed, acceptedTask]);
 
   useEffect(() => {
     if (isConfirmed && !acceptedTask) {
@@ -182,35 +167,95 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: any[] }) {
 }
 
 // --- My Agents Tab ---
-function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedAgents: any[], isLoading: boolean, onMint: (skill: number) => void, woodInventory: number }) {
+function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory, refetchAgents, hash: mintHash }: { ownedAgents: any[], isLoading: boolean, onMint: (skill: number) => void, woodInventory: number, refetchAgents: () => void, hash: `0x${string}` | undefined }) {
   const [selectedSkill, setSelectedSkill] = useState(1);
-  const [taskId, setTaskId] = useState('');
+  
+  const [showGallery, setShowGallery] = useState(false);
+  const [allAgents, setAllAgents] = useState<any[]>([]);
+
   const { data: hash, writeContract, isPending } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
-  const { data: hash3, writeContract: writeContract3 } = useWriteContract();
-  const { isLoading: isConfirming3, isSuccess: isConfirmed3 } = useWaitForTransactionReceipt({ hash: hash3 });
+
+
+  const { data: totalSupplyData, isLoading: isTotalSupplyLoading, refetch: refetchTotalSupply } = useReadContract({
+    address: AIAgentAddress,
+    abi: AIAgentABI,
+    functionName: 'totalSupply',
+  });
+  const totalSupply = totalSupplyData ? Number(totalSupplyData as bigint) : 0;
+
+  const { isSuccess: isMintConfirmed } = useWaitForTransactionReceipt({ hash: mintHash });
+
+  useEffect(() => {
+    if (isMintConfirmed) {
+      refetchTotalSupply();
+    }
+  }, [isMintConfirmed, refetchTotalSupply]);
+
+  const tokenIdContracts = useMemo(() => {
+    if (totalSupply === 0) return [];
+    return Array.from({ length: totalSupply }, (_, i) => ({
+      address: AIAgentAddress,
+      abi: AIAgentABI,
+      functionName: 'tokenByIndex',
+      args: [BigInt(i)],
+    }));
+  }, [totalSupply]);
+
+  const { data: tokenIdsData, isLoading: areTokenIdsLoading } = useReadContracts({ contracts: tokenIdContracts });
+
+  const tokenIds = useMemo(() => {
+    if (!tokenIdsData) return [];
+    return tokenIdsData.filter(d => d.status === 'success').map(d => d.result as bigint);
+  }, [tokenIdsData]);
+
+  const agentContracts = useMemo(() => {
+    if (tokenIds.length === 0) return [];
+    const contracts: any[] = [];
+    tokenIds.forEach(tokenId => {
+      contracts.push({
+        address: AIAgentAddress,
+        abi: AIAgentABI,
+        functionName: 'ownerOf',
+        args: [tokenId],
+      });
+      contracts.push({
+        address: AIAgentAddress,
+        abi: AIAgentABI,
+        functionName: 'getAgentSkill',
+        args: [tokenId],
+      });
+    });
+    return contracts;
+  }, [tokenIds]);
+
+  const { data: agentsData, isLoading: areAgentsLoading } = useReadContracts({ contracts: agentContracts });
+
+  useEffect(() => {
+    if (agentsData && tokenIds.length > 0) {
+      const newAgents = [];
+      for (let i = 0; i < tokenIds.length; i++) {
+        const tokenId = tokenIds[i];
+        const owner = agentsData[i * 2]?.result as string;
+        const skillNum = Number(agentsData[i * 2 + 1]?.result);
+        const skillData = SKILL_MAP.get(skillNum);
+        newAgents.push({
+          id: Number(tokenId),
+          owner: owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Unknown',
+          skill: skillData?.name || 'Unknown',
+          icon: skillData?.icon || null,
+        });
+      }
+      setAllAgents(newAgents);
+    }
+  }, [agentsData, tokenIds]);
 
   const handleMint = () => {
     onMint(selectedSkill);
   };
 
-  const handleSimulate = () => {
-    if (!taskId) return;
-    writeContract3({
-      address: GameSimulatorAddress,
-      abi: GameSimulatorABI,
-      functionName: 'performTask',
-      args: [BigInt(taskId)],
-    });
-  };
 
-  useEffect(() => {
-    if (isConfirmed3) {
-      toast.success("Simulation Complete!", { description: "Wood added to inventory." });
-      setTaskId('');
-    }
-  }, [isConfirmed3]);
 
   return (
     <Card>
@@ -223,8 +268,14 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedA
           {isLoading ? <p>Loading your agents...</p> :
             ownedAgents.length > 0 ? ownedAgents.map(agent => (
               <Card key={agent.id} className="glow">
-                <CardHeader><CardTitle>Agent #{agent.id}</CardTitle></CardHeader>
-                <CardContent><p>Skill: {agent.icon && <agent.icon className="inline mr-2 h-4 w-4" />}{agent.skill}</p></CardContent>
+                <CardHeader><CardTitle>AI Agent #{agent.id}</CardTitle></CardHeader>
+                <CardContent>
+                  <p className="flex items-center">
+                    {agent.icon && <agent.icon className="inline mr-2 h-5 w-5" />}
+                    <span className="font-medium">{agent.skill}</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">Ready for tasks</p>
+                </CardContent>
               </Card>
             )) : <p>You don't own any agents yet.</p>
           }
@@ -250,25 +301,56 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory }: { ownedA
               {isPending || isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isConfirming ? 'Minting...' : 'Mint Agent'}
             </Button>
+            <Button onClick={refetchAgents} variant="outline" className="w-full sm:w-auto">
+              Refresh Agents
+            </Button>
           </div>
         </div>
         <div className="mt-6 pt-6 border-t">
           <h3 className="text-lg font-semibold mb-4">Your Inventory</h3>
           <p>Wood: {woodInventory}</p>
         </div>
+
         <div className="mt-6 pt-6 border-t">
-          <h3 className="text-lg font-semibold mb-4">Simulations</h3>
-          <p>Manually trigger task simulation for testing.</p>
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="w-full sm:w-auto flex-grow">
-              <Label htmlFor="task-id">Task ID</Label>
-              <Input id="task-id" placeholder="e.g., 1" value={taskId} onChange={(e) => setTaskId(e.target.value)} />
+          <Button
+            variant="outline"
+            onClick={() => setShowGallery(!showGallery)}
+            className="w-full mb-4"
+          >
+            {showGallery ? 'Hide' : 'View'} All Agents ({totalSupply})
+          </Button>
+          {showGallery && (
+            <div>
+              <CardDescription className="mb-4">Browse all minted AI agents in the game.</CardDescription>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Token ID</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Skill</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isTotalSupplyLoading || areTokenIdsLoading || areAgentsLoading ? (
+                    <TableRow><TableCell colSpan={3}>Loading all agents...</TableCell></TableRow>
+                  ) : allAgents.length > 0 ? allAgents.map(agent => (
+                    <TableRow key={agent.id}>
+                      <TableCell>{agent.id}</TableCell>
+                      <TableCell>{agent.owner}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          {agent.icon && <agent.icon className="inline mr-2 h-5 w-5" />}
+                          <span>{agent.skill}</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow><TableCell colSpan={3}>No agents minted yet.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
-            <Button onClick={handleSimulate} disabled={isConfirming3} className="w-full sm:w-auto">
-              {isConfirming3 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Simulate Task
-            </Button>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -347,30 +429,33 @@ function PostTaskTab({ onTaskPosted }: { onTaskPosted: () => void }) {
   );
 }
 
+
+
 // --- Main Home Component ---
 export default function Home() {
   const { address } = useAccount();
   const [ownedAgents, setOwnedAgents] = useState<any[]>([]);
 
   // Agent Fetching Logic
-  const { data: totalSupplyData, isLoading: isAgentTotalSupplyLoading, refetch: refetchAgentTotalSupply } = useReadContract({
+  const { data: balanceData, refetch: refetchBalance } = useReadContract({
     address: AIAgentAddress,
     abi: AIAgentABI,
-    functionName: 'totalSupply',
+    functionName: 'balanceOf',
+    args: [address as `0x${string}`],
   });
-  const agentTotalSupply = totalSupplyData ? Number((totalSupplyData as bigint) || 0n) : 0;
+  const balance = balanceData ? Number(balanceData) : 0;
 
-  const agentOwnerContracts = useMemo(() => {
-    if (agentTotalSupply === 0) return [];
-    return Array.from({ length: agentTotalSupply }, (_, i) => i + 1).map(tokenId => ({ address: AIAgentAddress, abi: AIAgentABI, functionName: 'ownerOf', args: [BigInt(tokenId)] }));
-  }, [agentTotalSupply]);
+  const ownedTokenIdContracts = useMemo(() => {
+    if (balance === 0 || !address) return [];
+    return Array.from({ length: balance }, (_, i) => ({ address: AIAgentAddress, abi: AIAgentABI, functionName: 'tokenOfOwnerByIndex', args: [address, BigInt(i)] }));
+  }, [balance, address]);
 
-  const { data: ownersData, isLoading: areOwnersLoading } = useReadContracts({ contracts: agentOwnerContracts });
+  const { data: ownedTokenIdsData, isLoading: areTokenIdsLoading } = useReadContracts({ contracts: ownedTokenIdContracts });
 
   const ownedTokenIds = useMemo(() => {
-    if (!ownersData || !address) return [];
-    return ownersData.map((r, i) => ({ ...r, tokenId: i + 1 })).filter(r => r.status === 'success' && r.result === address).map(r => BigInt(r.tokenId));
-  }, [ownersData, address]);
+    if (!ownedTokenIdsData) return [];
+    return ownedTokenIdsData.filter(d => d.status === 'success').map(d => d.result as bigint);
+  }, [ownedTokenIdsData]);
 
   const agentSkillContracts = useMemo(() => {
     if (ownedTokenIds.length === 0) return [];
@@ -382,7 +467,7 @@ export default function Home() {
   useEffect(() => {
     if (skillsData) {
       const agents = ownedTokenIds.map((tokenId, index) => {
-        const skillNum = Number((skillsData[index].result as bigint));
+        const skillNum = Number(skillsData[index].result);
         const skillData = SKILL_MAP.get(skillNum);
         return { id: Number(tokenId), skill: skillData?.name || 'Unknown', icon: skillData?.icon || null };
       });
@@ -409,9 +494,9 @@ export default function Home() {
   useEffect(() => {
     if (isConfirmed) {
       toast.success("Success!", { description: "Your transaction has been confirmed." });
-      refetchAgentTotalSupply();
+      refetchBalance();
     }
-  }, [isConfirmed, refetchAgentTotalSupply]);
+  }, [isConfirmed, refetchBalance]);
 
   const { data: taskCountData, refetch: refetchTasks } = useReadContract({
     address: TaskMarketplaceAddress,
@@ -431,7 +516,7 @@ export default function Home() {
           <TaskMarketplaceTab ownedAgents={ownedAgents} />
         </TabsContent>
         <TabsContent value="agents">
-          <MyAgentsTab ownedAgents={ownedAgents} isLoading={areOwnersLoading || areSkillsLoading} onMint={handleMint} woodInventory={Number((woodInventoryData as bigint) || 0n)} />
+          <MyAgentsTab ownedAgents={ownedAgents} isLoading={areTokenIdsLoading || areSkillsLoading} onMint={handleMint} woodInventory={Number((woodInventoryData as bigint) || 0n)} refetchAgents={refetchBalance} hash={hash} />
         </TabsContent>
         <TabsContent value="post">
           <PostTaskTab onTaskPosted={refetchTasks} />

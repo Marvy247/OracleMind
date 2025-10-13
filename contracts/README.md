@@ -1,3 +1,3 @@
-AIAgent Contract Address = 0xC79157189380c3b5ab7fF25f622DaA1e2Cf5FcB5
-TaskMarketplace Contract Address = 0x65bfDa8Eb3eeD4b90240C7640D0B49450a83E021
-GameSimulator Contract Address = 0x0b93c6Ce4A04dce967cB0fA0b046001c49F2AD02
+AIAgent Contract Address = 0x0118adCb8FAAF31108Ba9A4d1da1b3cB6caD9f4f
+TaskMarketplace Contract Address = 0x9A57E71fD30d9974949d9070Fc7AF4f6EfC9e441
+GameSimulator Contract Address = 0x21C16137496B23a79b1a35cf7E7D64DA4849BDf1

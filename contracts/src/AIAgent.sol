@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-contract AIAgent is ERC721, Ownable {
+contract AIAgent is ERC721Enumerable, Ownable {
     uint256 private _tokenIdCounter;
 
     // Enum for different skills an agent can have
@@ -25,7 +25,7 @@ contract AIAgent is ERC721, Ownable {
 
     constructor(address initialOwner) ERC721("Somnia Agent", "SAI") Ownable(initialOwner) {}
 
-    function mint(address to, Skill skill) public onlyOwner returns (uint256) {
+    function mint(address to, Skill skill) public returns (uint256) {
         _tokenIdCounter++;
         uint256 tokenId = _tokenIdCounter;
         _safeMint(to, tokenId);
@@ -43,7 +43,7 @@ contract AIAgent is ERC721, Ownable {
         return agents[tokenId].skill;
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _tokenIdCounter;
     }
 }

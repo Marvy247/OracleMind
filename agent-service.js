@@ -19,9 +19,9 @@ const somniaTestnet = defineChain({
 
 // --- CONFIGURATION ---
 // You can replace these with imports from your frontend config if using a shared workspace
-const AIAgentAddress = "0xC79157189380c3b5ab7fF25f622DaA1e2Cf5FcB5";
-const TaskMarketplaceAddress = "0x65bfDa8Eb3eeD4b90240C7640D0B49450a83E021";
-const GameSimulatorAddress = "0x0b93c6Ce4A04dce967cB0fA0b046001c49F2AD02";
+const AIAgentAddress = "0x0118adCb8FAAF31108Ba9A4d1da1b3cB6caD9f4f";
+const TaskMarketplaceAddress = "0x9A57E71fD30d9974949d9070Fc7AF4f6EfC9e441";
+const GameSimulatorAddress = "0x21C16137496B23a79b1a35cf7E7D64DA4849BDf1";
 
 // Paste the ABIs here (truncated for brevity in this example)
 const AIAgentABI = [{"type":"constructor","inputs":[{"name":"initialOwner","type":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"getAgentSkill","inputs":[{"name":"tokenId","type":"uint256"}],"outputs":[{"name":"","type":"uint8"}],"stateMutability":"view"},{"type":"function","name":"ownerOf","inputs":[{"name":"tokenId","type":"uint256"}],"outputs":[{"name":"","type":"address"}],"stateMutability":"view"}, {"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"}, {"type":"error","name":"ERC721NonexistentToken","inputs":[{"name":"tokenId","type":"uint256"}]}];

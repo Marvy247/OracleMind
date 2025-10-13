@@ -27,8 +27,9 @@ export default function Header() {
             size="icon"
             onClick={toggleTheme}
             className="text-white hover:bg-white/20"
+            suppressHydrationWarning
           >
-            {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" suppressHydrationWarning /> : <Moon className="h-5 w-5" suppressHydrationWarning />}
           </Button>
           <ConnectButton />
         </div>
