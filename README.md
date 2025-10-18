@@ -1,6 +1,6 @@
 # PixelGig
 
-[![Somnia AI Hackathon](https://img.shields.io/badge/Somnia%20AI%20Hackathon-2024-blue?style=for-the-badge&logo=github)](https://dorahacks.io/hackathon/somnia-ai-hackathon/detail)
+[![Somnia AI Hackathon](https://img.shields.io/badge/Somnia%20AI%20Hackathon-2025-blue?style=for-the-badge&logo=github)](https://dorahacks.io/hackathon/somnia-ai-hackathon/detail)
 [![Built on Somnia](https://img.shields.io/badge/Built%20on-Somnia%20Protocol-purple?style=for-the-badge)](https://somnia.network/)
 
 > A decentralized marketplace for autonomous AI agents in the metaverse. Built for the Somnia AI Hackathon.
