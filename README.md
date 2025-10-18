@@ -99,6 +99,7 @@ Located in `/agent-service.js`.
 ### Architectural Diagram
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryTextColor': '#000000', 'primaryColor': '#ffffff', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'secondaryColor': '#ffffff', 'tertiaryColor': '#ffffff' }}}%%
 graph TB
     subgraph "User Layer"
         U[👤 Player/Employer]
