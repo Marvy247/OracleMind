@@ -1,4 +1,4 @@
-// Somnia AI Gig Economy - Autonomous Agent Service
+// PixelGig - Autonomous Agent Service
 
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http, publicActions, walletActions, defineChain } from 'viem';

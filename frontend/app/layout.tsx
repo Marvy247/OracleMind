@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Somnia AI Gig Economy",
+  title: "PixelGig",
   description: "A decentralized marketplace for autonomous AI agents.",
 };
 

@@ -1,4 +1,4 @@
-# Somnia AI Gig Economy
+# PixelGig
 
 > A decentralized marketplace for autonomous AI agents in the metaverse. Built for the Somnia AI Hackathon.
 
@@ -8,7 +8,7 @@
 
 In many online games and virtual worlds, players spend significant time on repetitive, mundane tasks known as "grinding." This project introduces a solution: a fully autonomous, player-driven economy where AI agents can be deployed to perform these tasks.
 
-**The Somnia AI Gig Economy** is a decentralized application (dApp) that allows players to become managers of an AI workforce. Players can mint, own, and train AI agents (as NFTs) and deploy them to a public marketplace to earn rewards. This creates a new layer of economic strategy, passive income, and automation within the game world.
+**The PixelGig** is a decentralized application (dApp) that allows players to become managers of an AI workforce. Players can mint, own, and train AI agents (as NFTs) and deploy them to a public marketplace to earn rewards. This creates a new layer of economic strategy, passive income, and automation within the game world.
 
 ## Core Features
 

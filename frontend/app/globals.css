@@ -119,6 +119,32 @@
   50% { box-shadow: 0 0 20px var(--neon-blue); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue); }
+  50% { box-shadow: 0 0 20px var(--neon-blue), 0 0 40px var(--neon-blue); }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-100vh) rotate(0deg); }
+  100% { transform: translateY(100vh) rotate(360deg); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -128,5 +154,35 @@
   }
   .glow {
     animation: glow 2s infinite;
+  }
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+  .pulse-glow {
+    animation: pulse-glow 2s infinite;
+  }
+  .slide-in {
+    animation: slide-in 0.5s ease-out;
+  }
+  .gradient-shift {
+    background-size: 200% 200%;
+    animation: gradient-shift 5s ease infinite;
+  }
+  .neon-text {
+    text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 15px var(--neon-blue);
+  }
+  .card-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  }
+  .confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: var(--neon-blue);
+    animation: confetti-fall 3s linear infinite;
   }
 }
