@@ -15,16 +15,8 @@ export default function Footer() {
         ))}
       </div>
       <div className="container mx-auto px-4 text-center relative z-10">
-        <p className="neon-text text-lg font-semibold mb-2">&copy; 2025 Somnia AI Gig Economy</p>
-        <p className="text-sm text-gray-300 mb-4">Built for the hackathon with cutting-edge blockchain technology</p>
-        <a
-          href="https://hackathon.example.com"
-          className="inline-block bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-full hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Visit Hackathon Site
-        </a>
+        <p className="neon-text text-lg font-semibold mb-2">&copy; 2025 PixelGig</p>
+        <p className="text-sm text-gray-300 mb-4">Built for the Somnia AI Agent hackathon with cutting-edge blockchain technology</p>
       </div>
     </footer>
   );

@@ -69,38 +69,8 @@ function AcceptTaskDialog({ task, ownedAgents, onAccept }: { task: { taskId: big
 }
 
 // --- Task Marketplace Tab ---
-function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: { id: number; skill: string }[] }) {
-  const [tasks, setTasks] = useState<{ taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number }[]>([]);
+function TaskMarketplaceTab({ ownedAgents, tasks, isLoading }: { ownedAgents: { id: number; skill: string }[], tasks: { taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number }[], isLoading: boolean }) {
   const [acceptedTask, setAcceptedTask] = useState<{ taskId: bigint } | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: taskCountData, isLoading: isTaskCountLoading, refetch: localRefetchTasks } = useReadContract({
-    address: TaskMarketplaceAddress,
-    abi: TaskMarketplaceABI,
-    functionName: 'getTaskCount',
-  });
-  const taskCount = taskCountData ? Number((taskCountData as bigint) || 0n) : 0;
-
-  const taskContracts = useMemo(() => {
-    if (taskCount === 0) return [];
-    return Array.from({ length: taskCount }, (_, i) => i).map(taskId => ({
-      address: TaskMarketplaceAddress,
-      abi: TaskMarketplaceABI,
-      functionName: 'getTask',
-      args: [BigInt(taskId + 1)],
-    }));
-  }, [taskCount]);
-
-  const { data: tasksData, isLoading: areTasksLoading } = useReadContracts({ contracts: taskContracts }) as { data: { result: { taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number } | undefined; status: string }[], isLoading: boolean };
-
-  useEffect(() => {
-    if (tasksData) {
-      const openTasks = tasksData
-        .filter((taskResult) => taskResult.status === 'success' && taskResult.result && taskResult.result.status === 0)
-        .map((taskResult) => taskResult.result!)
-        .filter((result): result is { taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number } => result !== undefined);
-      setTasks(openTasks);
-    }
-  }, [tasksData]);
 
   const { data: hash, writeContract } = useWriteContract();
   const { isSuccess: _isConfirmed } = useWaitForTransactionReceipt({ hash });
@@ -124,9 +94,8 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: { id: number; skill:
   useEffect(() => {
     if (_isConfirmed && !acceptedTask) {
       toast.success("Task Accepted!", { description: "Your agent is now on the job." });
-      localRefetchTasks();
     }
-  }, [_isConfirmed, acceptedTask, localRefetchTasks]);
+  }, [_isConfirmed, acceptedTask]);
 
   return (
     <div className="space-y-6">
@@ -135,7 +104,7 @@ function TaskMarketplaceTab({ ownedAgents }: { ownedAgents: { id: number; skill:
         <p className="text-muted-foreground">Discover missions for your AI agents</p>
       </div>
 
-      {areTasksLoading ? (
+      {isLoading ? (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
           <span className="ml-2 text-lg">Loading missions...</span>
@@ -353,9 +322,8 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory, refetchAge
             ownedAgents.length > 0 ? ownedAgents.map(agent => {
               const stats = agentStats.get(agent.id) || { tasksCompleted: 0, efficiency: 100 };
               const level = calculateAgentLevel(stats.tasksCompleted);
-              const xpForNext = getXPForLevel(level + 1);
-              const currentXP = stats.tasksCompleted * 5;
-              const progress = (currentXP / xpForNext) * 100;
+              const currentXP = stats.tasksCompleted;
+              const progress = ((currentXP % 5) / 5) * 100;
 
               return (
                 <Card key={agent.id} className="glow card-hover pulse-glow">
@@ -372,7 +340,7 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory, refetchAge
                       {agent.icon && <agent.icon className="inline mr-2 h-5 w-5 text-blue-500" />}
                       <span className="font-medium">{agent.skill}</span>
                     </p>
-                    <ProgressBar progress={Math.min(progress, 100)} label={`XP Progress`} />
+                    <ProgressBar progress={progress} label={`XP Progress`} />
                     <p className="text-sm text-muted-foreground mt-2">
                       Tasks: {stats.tasksCompleted} | Efficiency: {stats.efficiency}%
                     </p>
@@ -465,8 +433,8 @@ function MyAgentsTab({ ownedAgents, isLoading, onMint, woodInventory, refetchAge
   );
 }
 
-// --- Post a Task Tab ---
-function PostTaskTab({ onTaskPosted }: { onTaskPosted: () => void }) {
+// --- Post Task Modal ---
+function PostTaskModal({ isOpen, onClose, onTaskPosted }: { isOpen: boolean; onClose: () => void; onTaskPosted: () => void }) {
   const [description, setDescription] = useState('');
   const [reward, setReward] = useState('');
   const [requiredSkill, setRequiredSkill] = useState<number>(1);
@@ -496,46 +464,52 @@ function PostTaskTab({ onTaskPosted }: { onTaskPosted: () => void }) {
       setDescription('');
       setReward('');
       setRequiredSkill(1);
+      onClose();
       // Force refetch of task count after posting
-      setTimeout(() => onTaskPosted(), 1000);
+      onTaskPosted();
     }
-  }, [_isConfirmed, onTaskPosted]);
+  }, [_isConfirmed, onTaskPosted, onClose]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Post a New Task</CardTitle>
-        <CardDescription>Create a new job for the AI agent marketplace.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="description">Task Description</Label>
-          <Input id="description" placeholder="e.g., Gather 100 wood" value={description} onChange={(e) => setDescription(e.target.value)} />
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Post a New Task</DialogTitle>
+          <DialogDescription>Create a new job for the AI agent marketplace.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="description">Task Description</Label>
+            <Input id="description" placeholder="e.g., Gather 100 wood" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="reward">Reward (in SOMI)</Label>
+            <Input id="reward" placeholder="0.01" value={reward} onChange={(e) => setReward(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="skill">Required Skill</Label>
+            <Select onValueChange={(value) => setRequiredSkill(Number(value))} defaultValue={String(requiredSkill)}>
+              <SelectTrigger id="skill"><SelectValue placeholder="Select a skill" /></SelectTrigger>
+              <SelectContent>
+                {Array.from(SKILL_MAP.entries()).map(([key, skill]) => (
+                  <SelectItem key={String(key)} value={String(key)}>
+                    <skill.icon className="inline mr-2 h-4 w-4" />
+                    {skill.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="reward">Reward (in SOMI)</Label>
-          <Input id="reward" placeholder="0.01" value={reward} onChange={(e) => setReward(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="skill">Required Skill</Label>
-          <Select onValueChange={(value) => setRequiredSkill(Number(value))} defaultValue={String(requiredSkill)}>
-            <SelectTrigger id="skill"><SelectValue placeholder="Select a skill" /></SelectTrigger>
-            <SelectContent>
-              {Array.from(SKILL_MAP.entries()).map(([key, skill]) => (
-                <SelectItem key={String(key)} value={String(key)}>
-                  <skill.icon className="inline mr-2 h-4 w-4" />
-                  {skill.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={handlePostTask} disabled={isPending}>
-          {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isPending ? 'Posting Task...' : 'Post Task'}
-        </Button>
-      </CardContent>
-    </Card>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handlePostTask} disabled={isPending}>
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isPending ? 'Posting Task...' : 'Post Task'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -723,6 +697,8 @@ export default function Home() {
   const { address } = useAccount();
   const [ownedAgents, setOwnedAgents] = useState<{ id: number; skill: string; icon?: React.ComponentType<{ className?: string }> }[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showPostTaskModal, setShowPostTaskModal] = useState(false);
+  const [tasks, setTasks] = useState<{ taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number }[]>([]);
 
   // Agent Fetching Logic
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
@@ -787,31 +763,62 @@ export default function Home() {
     }
   }, [_isConfirmed, refetchBalance]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: taskCountData, refetch: refetchTasks } = useReadContract({
+  // Task Fetching Logic
+  const { data: taskCountData, refetch: refetchTaskCount } = useReadContract({
     address: TaskMarketplaceAddress,
     abi: TaskMarketplaceABI,
     functionName: 'getTaskCount',
   });
+  const taskCount = taskCountData ? Number((taskCountData as bigint) || 0n) : 0;
+
+  const taskContracts = useMemo(() => {
+    if (taskCount === 0) return [];
+    return Array.from({ length: taskCount }, (_, i) => i).map(taskId => ({
+      address: TaskMarketplaceAddress,
+      abi: TaskMarketplaceABI,
+      functionName: 'getTask',
+      args: [BigInt(taskId + 1)],
+    }));
+  }, [taskCount]);
+
+  const { data: tasksData, isLoading: areTasksLoading, refetch: refetchTasksData } = useReadContracts({ contracts: taskContracts }) as { data: { result: { taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number } | undefined; status: string }[], isLoading: boolean, refetch: () => void };
+
+  useEffect(() => {
+    if (tasksData) {
+      const openTasks = tasksData
+        .filter((taskResult) => taskResult.status === 'success' && taskResult.result && taskResult.result.status === 0)
+        .map((taskResult) => taskResult.result!)
+        .filter((result): result is { taskId: bigint; description: string; reward: bigint; requiredSkill: number; status: number } => result !== undefined);
+      setTasks(openTasks);
+    }
+  }, [tasksData]);
 
   useEffect(() => {
     // Refetch tasks when component mounts
-    refetchTasks();
-  }, [refetchTasks]);
+    refetchTaskCount();
+  }, [refetchTaskCount]);
 
   return (
     <main className="container mx-auto px-4 py-8 min-h-screen">
       <ParticleEffect trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-4xl font-bold neon-text">Dashboard</h1>
+          <p className="text-muted-foreground">AI Agent Marketplace & Simulator</p>
+        </div>
+        <Button onClick={() => setShowPostTaskModal(true)} className="hover:scale-105 transition-transform">
+          Post New Task
+        </Button>
+      </div>
       <Tabs defaultValue="marketplace" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
           <TabsTrigger value="agents">My Agents</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          <TabsTrigger value="post">Post Task</TabsTrigger>
         </TabsList>
         <TabsContent value="marketplace">
-          <TaskMarketplaceTab ownedAgents={ownedAgents} />
+          <TaskMarketplaceTab ownedAgents={ownedAgents} tasks={tasks} isLoading={areTasksLoading} />
         </TabsContent>
         <TabsContent value="agents">
           <MyAgentsTab ownedAgents={ownedAgents} isLoading={areTokenIdsLoading || areSkillsLoading} onMint={handleMint} woodInventory={Number((woodInventoryData as bigint) || 0n)} refetchAgents={refetchBalance} hash={hash} />
@@ -822,10 +829,8 @@ export default function Home() {
         <TabsContent value="leaderboard">
           <LeaderboardTab />
         </TabsContent>
-        <TabsContent value="post">
-          <PostTaskTab onTaskPosted={refetchTasks} />
-        </TabsContent>
       </Tabs>
+      <PostTaskModal isOpen={showPostTaskModal} onClose={() => setShowPostTaskModal(false)} onTaskPosted={() => { refetchTaskCount(); refetchTasksData(); }} />
     </main>
   );
 }

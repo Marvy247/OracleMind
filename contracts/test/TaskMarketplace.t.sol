@@ -27,11 +27,23 @@ contract TaskMarketplaceTest is Test {
         vm.deal(employer, 1 ether);
         uint256 reward = 0.1 ether;
         taskMarketplace.postTask{value: reward}("Chop 10 wood", reward, AIAgent.Skill.WOODCUTTING);
-        
+
         TaskMarketplace.Task memory task = taskMarketplace.getTask(1);
         assertEq(task.employer, employer);
         assertEq(task.reward, reward);
         assertEq(uint(task.status), uint(TaskMarketplace.TaskStatus.OPEN));
+    }
+
+    function testCanPostMultipleTasks() public {
+        vm.prank(employer);
+        vm.deal(employer, 2 ether);
+        uint256 reward = 0.1 ether;
+        taskMarketplace.postTask{value: reward}("Chop 10 wood", reward, AIAgent.Skill.WOODCUTTING);
+
+        vm.prank(employer);
+        taskMarketplace.postTask{value: reward}("Mine 10 ore", reward, AIAgent.Skill.MINING);
+
+        assertEq(taskMarketplace.getTaskCount(), 2);
     }
 
     function testAcceptTask() public {
